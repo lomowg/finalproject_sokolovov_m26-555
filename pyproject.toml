@@ -19,3 +19,5 @@ packages = ["valutatrade_hub"]
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+[project.scripts]
+valutatrade = "valutatrade_hub.cli.interface:main"
