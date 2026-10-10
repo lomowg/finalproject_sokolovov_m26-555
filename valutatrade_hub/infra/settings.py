@@ -11,6 +11,7 @@ DEFAULT_SETTINGS = {
     "rates_file": "rates.json",
     "rates_ttl_seconds": 300,
     "default_base_currency": "USD",
+    "initial_usd_balance": 10000,
     "log_file": "logs/actions.log",
     "log_format": "json",
     "log_level": "INFO",
@@ -68,8 +69,12 @@ class SettingsLoader:
             ):
                 raise ValueError("Неизвестный уровень логирования")
             from valutatrade_hub.core.currencies import get_currency
+            from valutatrade_hub.core.utils import number
 
             get_currency(settings["default_base_currency"])
+            settings["initial_usd_balance"] = number(
+                settings["initial_usd_balance"], positive=False
+            )
             for key in (
                 "data_dir",
                 "users_file",

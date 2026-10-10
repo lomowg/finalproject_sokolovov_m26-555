@@ -71,7 +71,7 @@ class WalletService:
         return {"rates": rows, "last_refresh": snapshot.get("last_refresh")}
 
     def register(self, username, password):
-        """Сохраняет пользователя и пустой портфель в одной операции хранилища."""
+        """Сохраняет пользователя и портфель со стартовым учебным балансом USD."""
         with self.database.transaction("users", "portfolios") as data:
             users = data["users"]
             user = User.create(
@@ -82,7 +82,11 @@ class WalletService:
             if any(entry["username"] == user.username for entry in users):
                 raise ValueError(f"Имя пользователя '{user.username}' уже занято")
             users.append(user.to_dict())
-            data["portfolios"].append(Portfolio(user).to_dict())
+            portfolio = Portfolio(
+                user,
+                {"USD": Wallet("USD", self.settings.get("initial_usd_balance"))},
+            )
+            data["portfolios"].append(portfolio.to_dict())
         return user.get_user_info()
 
     def login(self, username, password):

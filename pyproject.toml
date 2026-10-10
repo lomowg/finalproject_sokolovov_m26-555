@@ -29,6 +29,7 @@ portfolios_file = "portfolios.json"
 rates_file = "rates.json"
 rates_ttl_seconds = 300
 default_base_currency = "USD"
+initial_usd_balance = 10000
 log_file = "logs/actions.log"
 log_format = "json"
 log_level = "INFO"

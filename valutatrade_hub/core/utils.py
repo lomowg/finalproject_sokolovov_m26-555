@@ -8,9 +8,11 @@ from tempfile import NamedTemporaryFile
 EXCHANGE_RATES = {
     "USD": 1.0,
     "EUR": 1.0786,
+    "GBP": 1.27,
     "BTC": 59337.21,
     "RUB": 0.01016,
     "ETH": 3720.0,
+    "SOL": 145.12,
 }
 
 
