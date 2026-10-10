@@ -16,6 +16,9 @@ uv run valutatrade
 
 Для выхода нажмите `Ctrl+C`.
 
+## Asciinema
+Запись с показом возможностей - https://asciinema.org/a/aOqNjvGRrGoVyji1
+
 ## Настройка API
 
 Создайте файл `.env` в корне проекта и укажите свой ключ ExchangeRate-API:

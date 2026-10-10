@@ -2,5 +2,35 @@
   {
     "user_id": 1,
     "wallets": {}
+  },
+  {
+    "user_id": 2,
+    "wallets": {
+      "USD": {
+        "balance": 10000.0
+      }
+    }
+  },
+  {
+    "user_id": 3,
+    "wallets": {
+      "USD": {
+        "balance": 9910.344054690127
+      },
+      "EUR": {
+        "balance": 80.0
+      }
+    }
+  },
+  {
+    "user_id": 4,
+    "wallets": {
+      "USD": {
+        "balance": 9910.344054690127
+      },
+      "EUR": {
+        "balance": 80.0
+      }
+    }
   }
 ]

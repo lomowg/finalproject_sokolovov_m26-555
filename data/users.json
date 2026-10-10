@@ -5,5 +5,26 @@
     "registration_date": "2026-10-10T14:33:48.910278+00:00",
     "hashed_password": "2d01fba9fd15374e78a6b707398ced9c7a4ee3e4d50154b980cb1e3aa3c718c3",
     "salt": "b3d5d8c673e68d1650eef25d43b3e1e9"
+  },
+  {
+    "user_id": 2,
+    "username": "demo_970c4243",
+    "registration_date": "2026-10-10T20:05:48.928079+00:00",
+    "hashed_password": "aad6bd6fd21b9083c3ca170dc0c171d5b45b568ec8d9edcb2004533af93efd49",
+    "salt": "5e055a248b78d4a53963c16749504ce3"
+  },
+  {
+    "user_id": 3,
+    "username": "demo_12b256cd",
+    "registration_date": "2026-10-10T20:06:34.894272+00:00",
+    "hashed_password": "11d4754a8e8c422816701bd9c14f27459927cd00b74f5191befc5e6160ea4f0b",
+    "salt": "953defc05dd8ffb525c7b6e02a1c81e4"
+  },
+  {
+    "user_id": 4,
+    "username": "demo_101f1441",
+    "registration_date": "2026-10-10T20:07:32.269080+00:00",
+    "hashed_password": "1ef24a48d1e16403abf9db5aa3fb7be5ba768ce117f83e0064eadd6ec96924e1",
+    "salt": "b9d419abc8d7fd50f89652094bf22e82"
   }
 ]
