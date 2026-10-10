@@ -1,10 +1,10 @@
 [project]
-name = "finalproject-surname-group"
+name = "finalproject_sokolovov_m26-555"
 version = "0.1.0"
 description = "Консольное приложение для симуляции торговли валютами"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["prettytable>=3.12"]
+dependencies = ["prettytable>=3.12", "requests>=2.32", "python-dotenv>=1.0"]
 
 [dependency-groups]
 dev = ["ruff>=0.9"]

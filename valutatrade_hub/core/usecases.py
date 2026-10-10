@@ -1,6 +1,6 @@
 from functools import wraps
 
-from valutatrade_hub.core.currencies import get_currency
+from valutatrade_hub.core.currencies import CryptoCurrency, get_currency
 from valutatrade_hub.core.exceptions import InsufficientFundsError
 from valutatrade_hub.core.models import Portfolio, User, Wallet
 from valutatrade_hub.core.utils import make_rate_provider, number
@@ -38,6 +38,37 @@ class WalletService:
         get_currency(source)
         get_currency(target)
         return self._rate_provider(source, target)
+
+    def show_rates(self, currency=None, top=None, base="USD"):
+        """Фильтрует кеш, пересчитывает базу и выбирает самые дорогие криптовалюты."""
+        if top is not None and (
+            isinstance(top, bool) or not isinstance(top, int) or top <= 0
+        ):
+            raise ValueError("'top' должен быть положительным целым числом")
+        snapshot = self.database.read("rates")
+        pairs = snapshot.get("pairs", snapshot)
+        codes = {
+            key.split("_")[0] for key in pairs if "_" in key and key != "last_refresh"
+        }
+        if not codes:
+            raise ValueError(
+                "Локальный кеш курсов пуст. Выполните 'update-rates', "
+                "чтобы загрузить данные."
+            )
+        if currency is not None:
+            if currency not in codes:
+                raise ValueError(f"Курс для '{currency}' не найден в кеше.")
+            codes = {currency}
+        get_currency(base)
+        rows = []
+        for code in sorted(codes):
+            if top is not None and not isinstance(get_currency(code), CryptoCurrency):
+                continue
+            result = self.get_rate(code, base)
+            rows.append({"pair": f"{code}_{base}", **result})
+        if top is not None:
+            rows = sorted(rows, key=lambda row: row["rate"], reverse=True)[:top]
+        return {"rates": rows, "last_refresh": snapshot.get("last_refresh")}
 
     def register(self, username, password):
         """Сохраняет пользователя и пустой портфель в одной операции хранилища."""

@@ -23,10 +23,12 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(fields, ensure_ascii=False, default=str, allow_nan=False)
 
 
-def setup_logging() -> logging.Logger:
+def setup_logging(logger_name=LOGGER_NAME, filename=None) -> logging.Logger:
     """Настраивает JSON-лог с ротацией по размеру без повторных обработчиков."""
     settings = SettingsLoader()
     path = settings.get("log_file")
+    if filename is not None:
+        path = path.with_name(filename)
     signature = (
         str(path),
         settings.get("log_level"),
@@ -34,7 +36,7 @@ def setup_logging() -> logging.Logger:
         settings.get("log_backup_count"),
     )
     with _CONFIG_LOCK:
-        logger = logging.getLogger(LOGGER_NAME)
+        logger = logging.getLogger(logger_name)
         if getattr(logger, "_valutatrade_config", None) == signature:
             return logger
         path.parent.mkdir(parents=True, exist_ok=True)

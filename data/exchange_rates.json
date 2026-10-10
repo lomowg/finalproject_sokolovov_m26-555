@@ -1,0 +1,164 @@
+[
+  {
+    "from_currency": "BTC",
+    "to_currency": "USD",
+    "rate": 82972.0,
+    "timestamp": "2026-10-10T18:51:43.600239Z",
+    "source": "CoinGecko",
+    "meta": {
+      "request_ms": 775,
+      "status_code": 200,
+      "etag": "W/\"f99ec5eed2125eedfea44e11017dd898\"",
+      "raw_id": "bitcoin"
+    },
+    "id": "BTC_USD_2026-10-10T18:51:43.600239Z"
+  },
+  {
+    "from_currency": "ETH",
+    "to_currency": "USD",
+    "rate": 2510.45,
+    "timestamp": "2026-10-10T18:51:43.600239Z",
+    "source": "CoinGecko",
+    "meta": {
+      "request_ms": 775,
+      "status_code": 200,
+      "etag": "W/\"f99ec5eed2125eedfea44e11017dd898\"",
+      "raw_id": "ethereum"
+    },
+    "id": "ETH_USD_2026-10-10T18:51:43.600239Z"
+  },
+  {
+    "from_currency": "SOL",
+    "to_currency": "USD",
+    "rate": 110.27,
+    "timestamp": "2026-10-10T18:51:43.600239Z",
+    "source": "CoinGecko",
+    "meta": {
+      "request_ms": 775,
+      "status_code": 200,
+      "etag": "W/\"f99ec5eed2125eedfea44e11017dd898\"",
+      "raw_id": "solana"
+    },
+    "id": "SOL_USD_2026-10-10T18:51:43.600239Z"
+  },
+  {
+    "from_currency": "EUR",
+    "to_currency": "USD",
+    "rate": 1.1206993163734171,
+    "timestamp": "2026-10-10T18:51:44.339648Z",
+    "source": "ExchangeRate-API",
+    "meta": {
+      "request_ms": 737,
+      "status_code": 200,
+      "provider_updated_at": "Sat, 10 Oct 2026 00:00:01 +0000"
+    },
+    "id": "EUR_USD_2026-10-10T18:51:44.339648Z"
+  },
+  {
+    "from_currency": "GBP",
+    "to_currency": "USD",
+    "rate": 1.3231013495633765,
+    "timestamp": "2026-10-10T18:51:44.339648Z",
+    "source": "ExchangeRate-API",
+    "meta": {
+      "request_ms": 737,
+      "status_code": 200,
+      "provider_updated_at": "Sat, 10 Oct 2026 00:00:01 +0000"
+    },
+    "id": "GBP_USD_2026-10-10T18:51:44.339648Z"
+  },
+  {
+    "from_currency": "RUB",
+    "to_currency": "USD",
+    "rate": 0.011723301938330741,
+    "timestamp": "2026-10-10T18:51:44.339648Z",
+    "source": "ExchangeRate-API",
+    "meta": {
+      "request_ms": 737,
+      "status_code": 200,
+      "provider_updated_at": "Sat, 10 Oct 2026 00:00:01 +0000"
+    },
+    "id": "RUB_USD_2026-10-10T18:51:44.339648Z"
+  },
+  {
+    "from_currency": "BTC",
+    "to_currency": "USD",
+    "rate": 82960.0,
+    "timestamp": "2026-10-10T19:27:03.894590Z",
+    "source": "CoinGecko",
+    "meta": {
+      "request_ms": 549,
+      "status_code": 200,
+      "etag": "W/\"7b32c4b8b37f46db0378c0fa71520fdf\"",
+      "raw_id": "bitcoin"
+    },
+    "id": "BTC_USD_2026-10-10T19:27:03.894590Z"
+  },
+  {
+    "from_currency": "ETH",
+    "to_currency": "USD",
+    "rate": 2510.7,
+    "timestamp": "2026-10-10T19:27:03.894590Z",
+    "source": "CoinGecko",
+    "meta": {
+      "request_ms": 549,
+      "status_code": 200,
+      "etag": "W/\"7b32c4b8b37f46db0378c0fa71520fdf\"",
+      "raw_id": "ethereum"
+    },
+    "id": "ETH_USD_2026-10-10T19:27:03.894590Z"
+  },
+  {
+    "from_currency": "SOL",
+    "to_currency": "USD",
+    "rate": 110.37,
+    "timestamp": "2026-10-10T19:27:03.894590Z",
+    "source": "CoinGecko",
+    "meta": {
+      "request_ms": 549,
+      "status_code": 200,
+      "etag": "W/\"7b32c4b8b37f46db0378c0fa71520fdf\"",
+      "raw_id": "solana"
+    },
+    "id": "SOL_USD_2026-10-10T19:27:03.894590Z"
+  },
+  {
+    "from_currency": "EUR",
+    "to_currency": "USD",
+    "rate": 1.1206993163734171,
+    "timestamp": "2026-10-10T19:27:04.470496Z",
+    "source": "ExchangeRate-API",
+    "meta": {
+      "request_ms": 574,
+      "status_code": 200,
+      "provider_updated_at": "Sat, 10 Oct 2026 00:00:01 +0000"
+    },
+    "id": "EUR_USD_2026-10-10T19:27:04.470496Z"
+  },
+  {
+    "from_currency": "GBP",
+    "to_currency": "USD",
+    "rate": 1.3231013495633765,
+    "timestamp": "2026-10-10T19:27:04.470496Z",
+    "source": "ExchangeRate-API",
+    "meta": {
+      "request_ms": 574,
+      "status_code": 200,
+      "provider_updated_at": "Sat, 10 Oct 2026 00:00:01 +0000"
+    },
+    "id": "GBP_USD_2026-10-10T19:27:04.470496Z"
+  },
+  {
+    "from_currency": "RUB",
+    "to_currency": "USD",
+    "rate": 0.011723301938330741,
+    "timestamp": "2026-10-10T19:27:04.470496Z",
+    "source": "ExchangeRate-API",
+    "meta": {
+      "request_ms": 574,
+      "status_code": 200,
+      "provider_updated_at": "Sat, 10 Oct 2026 00:00:01 +0000"
+    },
+    "id": "RUB_USD_2026-10-10T19:27:04.470496Z"
+  }
+]

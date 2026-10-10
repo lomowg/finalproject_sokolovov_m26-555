@@ -10,6 +10,7 @@ from valutatrade_hub.core.exceptions import (
     InsufficientFundsError,
 )
 from valutatrade_hub.core.usecases import WalletService
+from valutatrade_hub.parser_service.updater import update_rates
 
 
 class CommandParser(argparse.ArgumentParser):
@@ -44,6 +45,12 @@ def build_parser():
     command = commands.add_parser("get-rate")
     command.add_argument("--from", dest="source", required=True)
     command.add_argument("--to", dest="target", required=True)
+    command = commands.add_parser("update-rates")
+    command.add_argument("--source", choices=("coingecko", "exchangerate"))
+    command = commands.add_parser("show-rates")
+    command.add_argument("--currency")
+    command.add_argument("--top", type=int)
+    command.add_argument("--base", default="USD")
     return parser
 
 
@@ -105,6 +112,34 @@ class CLI:
                     f"Стоимость: {result['cost']:,.2f} USD; "
                     f"баланс USD: {result['usd_balance']:,.2f}"
                 )
+            elif command == "update-rates":
+                result = update_rates(args.source)
+                print(
+                    f"Обновлено курсов: {result['updated']}. "
+                    f"Последнее обновление: {result['last_refresh']}"
+                )
+                if result["errors"]:
+                    print(
+                        "Обновление завершено с ошибками. Подробности: logs/parser.log"
+                    )
+                    for error in result["errors"]:
+                        print(error)
+                else:
+                    print("Обновление успешно завершено.")
+            elif command == "show-rates":
+                result = self.service.show_rates(args.currency, args.top, args.base)
+                print(f"Курсы из кеша (обновлено: {result['last_refresh']}):")
+                table = PrettyTable(["Пара", "Курс", "Обновлено", "Источник"])
+                for row in result["rates"]:
+                    table.add_row(
+                        [
+                            row["pair"],
+                            f"{row['rate']:.8f}",
+                            row["updated_at"],
+                            row["source"],
+                        ]
+                    )
+                print(table)
             elif command == "get-rate":
                 result = self.service.get_rate(args.source, args.target)
                 print(
