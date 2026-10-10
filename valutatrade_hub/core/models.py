@@ -3,8 +3,9 @@ import hmac
 import secrets
 from datetime import UTC, datetime
 
+from valutatrade_hub.core.currencies import get_currency
+from valutatrade_hub.core.exceptions import ApiRequestError, InsufficientFundsError
 from valutatrade_hub.core.utils import EXCHANGE_RATES, number
-from valutatrade_hub.core.utils import currency_code as validate_currency_code
 
 MIN_PASSWORD_LENGTH = 4
 PASSWORD_SALT_BYTES = 16
@@ -133,7 +134,7 @@ class Wallet:
 
     def __init__(self, currency_code: str, balance: float = 0.0):
         """Создаёт кошелёк с проверенным кодом валюты и балансом."""
-        self._currency_code = validate_currency_code(currency_code)
+        self._currency_code = get_currency(currency_code).code
         self.balance = balance
 
     @property
@@ -159,10 +160,7 @@ class Wallet:
         """Списывает положительную сумму при достаточном остатке."""
         amount = number(amount)
         if amount > self.balance:
-            raise ValueError(
-                f"Недостаточно средств: доступно {self.balance:.4f} {self.currency_code}, "
-                f"требуется {amount:.4f} {self.currency_code}"
-            )
+            raise InsufficientFundsError(self.balance, amount, self.currency_code)
         self.balance -= amount
 
     def get_balance_info(self) -> str:
@@ -181,7 +179,7 @@ class Portfolio:
         self._user_id = user.user_id
         self._wallets = dict(wallets) if wallets is not None else {}
         for code, wallet in self._wallets.items():
-            validate_currency_code(code)
+            get_currency(code)
             if not isinstance(wallet, Wallet) or wallet.currency_code != code:
                 raise ValueError("Код кошелька должен совпадать с ключом словаря")
 
@@ -202,7 +200,7 @@ class Portfolio:
 
     def add_currency(self, code: str) -> Wallet:
         """Создаёт кошелёк; повторный код вызывает ValueError."""
-        code = validate_currency_code(code)
+        code = get_currency(code).code
         if code in self._wallets:
             raise ValueError(f"Кошелёк '{code}' уже существует")
         wallet = Wallet(code)
@@ -211,7 +209,7 @@ class Portfolio:
 
     def get_wallet(self, code: str) -> Wallet:
         """Возвращает кошелёк или сообщает об отсутствии валюты."""
-        code = validate_currency_code(code)
+        code = get_currency(code).code
         if code not in self._wallets:
             raise ValueError(
                 f"У вас нет кошелька '{code}'. Добавьте валюту: "
@@ -221,17 +219,17 @@ class Portfolio:
 
     def get_total_value(self, base_currency="USD", exchange_rates=None) -> float:
         """Считает стоимость портфеля по курсам валют к USD."""
-        base_currency = validate_currency_code(base_currency)
+        base_currency = get_currency(base_currency).code
         rates = EXCHANGE_RATES if exchange_rates is None else exchange_rates
         if base_currency not in rates:
-            raise ValueError(f"Неизвестная базовая валюта '{base_currency}'")
+            raise ApiRequestError(f"нет курса для {base_currency}→USD")
         base_rate = number(rates[base_currency])
         total = 0.0
         for code, wallet in self._wallets.items():
             if wallet.balance == 0:
                 continue
             if code not in rates:
-                raise ValueError(f"Не удалось получить курс для {code}→{base_currency}")
+                raise ApiRequestError(f"нет курса для {code}→{base_currency}")
             total += wallet.balance * number(rates[code]) / base_rate
         return number(total, positive=False)
 

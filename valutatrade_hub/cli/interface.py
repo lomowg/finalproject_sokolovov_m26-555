@@ -3,6 +3,12 @@ import shlex
 
 from prettytable import PrettyTable
 
+from valutatrade_hub.core.currencies import CURRENCIES
+from valutatrade_hub.core.exceptions import (
+    ApiRequestError,
+    CurrencyNotFoundError,
+    InsufficientFundsError,
+)
 from valutatrade_hub.core.usecases import WalletService
 
 
@@ -30,7 +36,7 @@ def build_parser():
         command.add_argument("--username", required=True)
         command.add_argument("--password", required=True)
     command = commands.add_parser("show-portfolio")
-    command.add_argument("--base", default="USD")
+    command.add_argument("--base")
     for name in ("buy", "sell"):
         command = commands.add_parser(name)
         command.add_argument("--currency", required=True)
@@ -108,6 +114,14 @@ class CLI:
                 print(
                     f"Обратный курс {args.target}→{args.source}: {1 / result['rate']:.8f}"
                 )
+        except InsufficientFundsError as error:
+            print(str(error))
+        except CurrencyNotFoundError as error:
+            print(str(error))
+            print("Поддерживаемые валюты: " + ", ".join(sorted(CURRENCIES)))
+        except ApiRequestError as error:
+            print(str(error))
+            print("Повторите попытку позже или проверьте подключение к сети.")
         except (ValueError, OSError, KeyError, TypeError, OverflowError) as error:
             print(f"Ошибка: {error}")
 
@@ -125,4 +139,7 @@ class CLI:
 
 def main():
     """Запускает интерактивный командный интерфейс."""
-    CLI().run()
+    try:
+        CLI().run()
+    except (ValueError, OSError) as error:
+        print(f"Ошибка настройки приложения: {error}")

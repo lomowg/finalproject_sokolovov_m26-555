@@ -1,14 +1,13 @@
 from functools import wraps
-from pathlib import Path
 
+from valutatrade_hub.core.currencies import get_currency
+from valutatrade_hub.core.exceptions import InsufficientFundsError
 from valutatrade_hub.core.models import Portfolio, User, Wallet
-from valutatrade_hub.core.utils import (
-    currency_code,
-    make_rate_provider,
-    number,
-    read_json,
-    write_json,
-)
+from valutatrade_hub.core.utils import make_rate_provider, number
+from valutatrade_hub.decorators import log_action
+from valutatrade_hub.infra.database import DatabaseManager
+from valutatrade_hub.infra.settings import SettingsLoader
+from valutatrade_hub.logging_config import setup_logging
 
 
 def authenticated(method):
@@ -24,44 +23,35 @@ def authenticated(method):
 
 
 class WalletService:
-    """Операции с пользователями, портфелями и локальным кешем курсов."""
+    """Операции с пользователями и портфелями через единое JSON-хранилище."""
 
-    def __init__(self, data_dir="data"):
-        """Задаёт каталог данных и создаёт неавторизованную сессию."""
-        self.data_dir = Path(data_dir)
+    def __init__(self):
+        """Подключает синглтоны настроек и хранилища и настраивает журнал."""
+        self.settings = SettingsLoader()
+        self.database = DatabaseManager()
         self.current_user = None
-        self._rate_provider = make_rate_provider(self.data_dir / "rates.json")
+        self._rate_provider = make_rate_provider(self.database, self.settings)
+        setup_logging()
 
     def get_rate(self, source: str, target: str) -> dict:
-        """Возвращает курс, время обновления и источник данных."""
+        """Проверяет валюты и возвращает свежий курс, время и источник."""
+        get_currency(source)
+        get_currency(target)
         return self._rate_provider(source, target)
 
-    def _records(self, name):
-        records = read_json(self.data_dir / name, [])
-        if not isinstance(records, list) or any(
-            not isinstance(item, dict) for item in records
-        ):
-            raise ValueError(f"Файл {name} должен содержать список объектов")
-        return records
-
     def register(self, username, password):
-        """Сохраняет нового пользователя и создаёт пустой портфель."""
-        users = self._records("users.json")
-        user = User.create(
-            max((item["user_id"] for item in users), default=0) + 1,
-            username,
-            password,
-        )
-        if any(item["username"] == user.username for item in users):
-            raise ValueError(f"Имя пользователя '{user.username}' уже занято")
-        portfolios = self._records("portfolios.json")
-        updated = portfolios + [Portfolio(user).to_dict()]
-        write_json(self.data_dir / "portfolios.json", updated)
-        try:
-            write_json(self.data_dir / "users.json", users + [user.to_dict()])
-        except OSError:
-            write_json(self.data_dir / "portfolios.json", portfolios)
-            raise
+        """Сохраняет пользователя и пустой портфель в одной операции хранилища."""
+        with self.database.transaction("users", "portfolios") as data:
+            users = data["users"]
+            user = User.create(
+                max((entry["user_id"] for entry in users), default=0) + 1,
+                username,
+                password,
+            )
+            if any(entry["username"] == user.username for entry in users):
+                raise ValueError(f"Имя пользователя '{user.username}' уже занято")
+            users.append(user.to_dict())
+            data["portfolios"].append(Portfolio(user).to_dict())
         return user.get_user_info()
 
     def login(self, username, password):
@@ -69,7 +59,7 @@ class WalletService:
         if not isinstance(username, str) or not username.strip():
             raise ValueError("Имя пользователя не может быть пустым")
         username = username.strip()
-        for entry in self._records("users.json"):
+        for entry in self.database.read("users"):
             if entry["username"] == username:
                 user = User.from_dict(entry)
                 if not user.verify_password(password):
@@ -78,9 +68,8 @@ class WalletService:
                 return user.get_user_info()
         raise ValueError(f"Пользователь '{username}' не найден")
 
-    @authenticated
-    def _portfolio(self):
-        for entry in self._records("portfolios.json"):
+    def _portfolio(self, records):
+        for entry in records:
             if entry["user_id"] == self.current_user.user_id:
                 wallets = {
                     code: Wallet(code, data["balance"])
@@ -89,32 +78,20 @@ class WalletService:
                 return Portfolio(self.current_user, wallets)
         raise ValueError("Портфель пользователя не найден")
 
-    def _save_portfolio(self, portfolio):
-        records = self._records("portfolios.json")
-        for index, entry in enumerate(records):
-            if entry["user_id"] == portfolio.user_id:
-                records[index] = portfolio.to_dict()
-                write_json(self.data_dir / "portfolios.json", records)
-                return
-        raise ValueError("Портфель пользователя не найден")
-
     @authenticated
-    def show_portfolio(self, base="USD"):
-        """Возвращает балансы и стоимость портфеля в выбранной валюте."""
-        base = currency_code(base)
-        try:
-            base_rate = self.get_rate(base, "USD")
-        except ValueError as error:
-            raise ValueError(f"Неизвестная базовая валюта '{base}'") from error
-        portfolio = self._portfolio()
+    def show_portfolio(self, base=None):
+        """Возвращает балансы и стоимость в базовой валюте из настроек или команды."""
+        base = self.settings.get("default_base_currency") if base is None else base
+        get_currency(base)
+        base_rate = self.get_rate(base, "USD")["rate"]
+        portfolio = self._portfolio(self.database.read("portfolios"))
         rows = []
-        rates = {base: base_rate["rate"]}
+        rates = {base: base_rate}
         for code, wallet in portfolio.wallets.items():
-            if wallet.balance == 0:
-                value = 0.0
-            else:
+            value = 0.0
+            if wallet.balance:
                 rates[code] = self.get_rate(code, "USD")["rate"]
-                value = wallet.balance * rates[code] / rates[base]
+                value = wallet.balance * rates[code] / base_rate
             rows.append({"currency": code, "balance": wallet.balance, "value": value})
         return {
             "username": self.current_user.username,
@@ -123,47 +100,56 @@ class WalletService:
             "total": portfolio.get_total_value(base, rates),
         }
 
+    @log_action("BUY", verbose=True)
     @authenticated
     def buy(self, currency, amount):
-        """Покупает указанное количество валюты за средства USD-кошелька."""
+        """Покупает указанное количество валюты за USD и журналирует результат."""
         return self._trade(currency, amount, buying=True)
 
+    @log_action("SELL", verbose=True)
     @authenticated
     def sell(self, currency, amount):
-        """Продаёт указанное количество валюты с начислением USD."""
+        """Продаёт валюту с начислением USD и журналирует результат."""
         return self._trade(currency, amount, buying=False)
 
     def _trade(self, currency, amount, *, buying):
-        currency = currency_code(currency)
+        currency = get_currency(currency).code
         amount = number(amount)
-        rate = self.get_rate(currency, "USD")
-        cost = number(amount * rate["rate"])
-        portfolio = self._portfolio()
-        if buying:
-            usd = portfolio.wallets.get("USD", Wallet("USD"))
-            usd.withdraw(cost)
-            wallet = (
-                portfolio.get_wallet(currency)
-                if currency in portfolio.wallets
-                else portfolio.add_currency(currency)
-            )
-            before = wallet.balance
-            wallet.deposit(amount)
-        else:
-            wallet = portfolio.get_wallet(currency)
-            before = wallet.balance
-            wallet.withdraw(amount)
-            usd = (
-                portfolio.get_wallet("USD")
-                if "USD" in portfolio.wallets
-                else portfolio.add_currency("USD")
-            )
-            usd.deposit(cost)
-        self._save_portfolio(portfolio)
+        with self.database.transaction("portfolios") as data:
+            portfolio = self._portfolio(data["portfolios"])
+            wallet = portfolio.wallets.get(currency)
+            if not buying and wallet is None:
+                raise InsufficientFundsError(0.0, amount, currency)
+            rate = self.get_rate(currency, "USD")
+            cost = number(amount * rate["rate"])
+            before = wallet.balance if wallet is not None else 0.0
+            try:
+                if buying:
+                    usd = portfolio.wallets.get("USD", Wallet("USD"))
+                    usd.withdraw(cost)
+                    if wallet is None:
+                        wallet = portfolio.add_currency(currency)
+                    wallet.deposit(amount)
+                else:
+                    wallet.withdraw(amount)
+                    usd = (
+                        portfolio.get_wallet("USD")
+                        if "USD" in portfolio.wallets
+                        else portfolio.add_currency("USD")
+                    )
+                    usd.deposit(cost)
+            except InsufficientFundsError as error:
+                error.rate = rate["rate"]
+                raise
+            for index, entry in enumerate(data["portfolios"]):
+                if entry["user_id"] == portfolio.user_id:
+                    data["portfolios"][index] = portfolio.to_dict()
+                    break
         return {
             "currency": currency,
             "amount": amount,
             "rate": rate["rate"],
+            "base": "USD",
             "source": rate["source"],
             "cost": cost,
             "before": before,

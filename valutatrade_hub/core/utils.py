@@ -5,8 +5,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-RATE_CACHE_TTL_SECONDS = 300
-
 EXCHANGE_RATES = {
     "USD": 1.0,
     "EUR": 1.0786,
@@ -18,9 +16,9 @@ EXCHANGE_RATES = {
 
 def currency_code(value: str) -> str:
     """Проверяет формат кода валюты и возвращает исходную строку."""
-    if not isinstance(value, str) or not re.fullmatch(r"[A-Z]+", value):
+    if not isinstance(value, str) or not re.fullmatch(r"[A-Z]{2,5}", value):
         raise ValueError(
-            "Код валюты должен быть непустой строкой из латинских букв в верхнем регистре"
+            "Код валюты должен содержать от 2 до 5 латинских букв в верхнем регистре"
         )
     return value
 
@@ -70,74 +68,97 @@ def write_json(path: Path, data) -> None:
             temporary.unlink(missing_ok=True)
 
 
-def make_rate_provider(path: Path, ttl: int = RATE_CACHE_TTL_SECONDS):
-    """Кеш курсов с обновлением из фиксированного источника."""
-    cached = None
+def make_rate_provider(database, settings):
+    """Создаёт кеш курсов с TTL из настроек и обновлением из заглушки."""
+    from copy import deepcopy
+
+    from valutatrade_hub.core.currencies import get_currency
+    from valutatrade_hub.core.exceptions import ApiRequestError
+
+    cached_snapshot = None
+    cached_results = {}
 
     def get_rate(source: str, target: str) -> dict:
-        nonlocal cached
-        source, target = currency_code(source), currency_code(target)
+        nonlocal cached_snapshot
+        get_currency(source)
+        get_currency(target)
         now = datetime.now(UTC)
-        if cached is None:
-            cached = read_json(path, {})
-            if not isinstance(cached, dict):
-                raise ValueError("Файл rates.json должен содержать объект")
-
-        def lookup(left, right):
-            if left == right:
-                if left in EXCHANGE_RATES:
-                    return 1.0, now, "FixedRates"
-                return None
-            entry = cached.get(f"{left}_{right}")
-            if not isinstance(entry, dict):
-                return None
-            try:
-                rate = number(entry["rate"])
-                updated = datetime.fromisoformat(entry["updated_at"])
-                if updated.tzinfo is None:
-                    updated = updated.replace(tzinfo=UTC)
-                age = (now - updated).total_seconds()
+        ttl = settings.get("rates_ttl_seconds")
+        with database.transaction("rates") as data:
+            rates = data["rates"]
+            if cached_snapshot != rates:
+                cached_results.clear()
+                cached_snapshot = deepcopy(rates)
+            key = (source, target)
+            previous = cached_results.get(key)
+            if previous is not None:
+                age = (
+                    now - datetime.fromisoformat(previous["updated_at"])
+                ).total_seconds()
                 if 0 <= age < ttl:
-                    return rate, updated, cached.get("source", "LocalCache")
-            except (KeyError, TypeError, ValueError):
-                pass
-            return None
+                    return previous.copy()
 
-        result = lookup(source, target)
-        if result is None:
-            reverse = lookup(target, source)
-            if reverse is not None:
-                result = (1 / reverse[0], reverse[1], reverse[2])
-        if result is None:
-            left, right = lookup(source, "USD"), lookup(target, "USD")
-            if left and right:
-                result = (
-                    left[0] / right[0],
-                    min(left[1], right[1]),
-                    left[2] if left[2] == right[2] else "MixedCache",
-                )
-        if result is None:
-            if source not in EXCHANGE_RATES or target not in EXCHANGE_RATES:
-                raise ValueError(
-                    f"Курс {source}→{target} недоступен. Повторите попытку позже."
-                )
-            stamp = now.isoformat()
-            refreshed = {
-                f"{code}_USD": {"rate": rate, "updated_at": stamp}
-                for code, rate in EXCHANGE_RATES.items()
-            }
-            refreshed.update(source="FixedRates", last_refresh=stamp)
-            write_json(path, refreshed)
-            cached = refreshed
-            result = (
-                EXCHANGE_RATES[source] / EXCHANGE_RATES[target],
-                now,
-                "FixedRates",
-            )
-        return {
-            "rate": number(result[0]),
-            "updated_at": result[1].isoformat(),
-            "source": result[2],
-        }
+            def lookup(left, right):
+                if left == right:
+                    return 1.0, now, "Identity"
+                entry = rates.get(f"{left}_{right}")
+                if not isinstance(entry, dict):
+                    return None
+                try:
+                    rate = number(entry["rate"])
+                    updated = datetime.fromisoformat(entry["updated_at"])
+                    if updated.tzinfo is None:
+                        updated = updated.replace(tzinfo=UTC)
+                    age = (now - updated).total_seconds()
+                    if 0 <= age < ttl:
+                        return rate, updated, rates.get("source", "LocalCache")
+                except (KeyError, TypeError, ValueError, OverflowError):
+                    return None
+                return None
+
+            result = lookup(source, target)
+            if result is None:
+                reverse = lookup(target, source)
+                if reverse is not None:
+                    result = (1 / reverse[0], reverse[1], reverse[2])
+            if result is None:
+                left, right = lookup(source, "USD"), lookup(target, "USD")
+                if left and right:
+                    result = (
+                        left[0] / right[0],
+                        min(left[1], right[1]),
+                        left[2] if left[2] == right[2] else "MixedCache",
+                    )
+            if result is None:
+                try:
+                    rate = number(EXCHANGE_RATES[source]) / number(
+                        EXCHANGE_RATES[target]
+                    )
+                    number(rate)
+                    stamp = now.isoformat()
+                    refreshed = {
+                        f"{code}_USD": {"rate": number(value), "updated_at": stamp}
+                        for code, value in EXCHANGE_RATES.items()
+                    }
+                except (KeyError, TypeError, ValueError, OverflowError) as error:
+                    raise ApiRequestError(
+                        f"не удалось обновить курс {source}→{target}"
+                    ) from error
+                refreshed.update(source="FixedRates", last_refresh=stamp)
+                rates.clear()
+                rates.update(refreshed)
+                cached_results.clear()
+                cached_snapshot = deepcopy(rates)
+                result = (rate, now, "FixedRates")
+            try:
+                response = {
+                    "rate": number(result[0]),
+                    "updated_at": result[1].isoformat(),
+                    "source": result[2],
+                }
+            except (ValueError, TypeError, OverflowError) as error:
+                raise ApiRequestError(f"некорректный курс {source}→{target}") from error
+        cached_results[key] = response
+        return response.copy()
 
     return get_rate
