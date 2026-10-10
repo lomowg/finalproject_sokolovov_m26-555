@@ -32,6 +32,29 @@ EXCHANGERATE_API_KEY=ваш_ключ
 без ключа. Настройки источников находятся в `valutatrade_hub/parser_service/config.py`.
 
 
+## Команды CLI
+
+Список доступных команд:
+
+```text
+update-rates
+register --username user --password password123
+login --username user --password password123
+buy --currency EUR --amount 100
+sell --currency EUR --amount 20
+show-portfolio
+show-portfolio --base EUR
+get-rate --from BTC --to USD
+show-rates
+show-rates --currency RUB
+show-rates --top 2
+show-rates --base EUR
+update-rates --source exchangerate
+update-rates --source coingecko
+```
+
+`buy`, `sell` и `show-portfolio` доступны после входа через `login`.
+
 ## Кеш и обновление курсов
 
 Основной сервис читает `data/rates.json`. Срок актуальности курсов - 300 секунд

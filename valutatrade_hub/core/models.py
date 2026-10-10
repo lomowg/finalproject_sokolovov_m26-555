@@ -217,19 +217,19 @@ class Portfolio:
             )
         return self._wallets[code]
 
-    def get_total_value(self, base_currency="USD", exchange_rates=None) -> float:
+    def get_total_value(self, base="USD", exchange_rates=None) -> float:
         """Считает стоимость портфеля по курсам валют к USD."""
-        base_currency = get_currency(base_currency).code
+        base = get_currency(base).code
         rates = EXCHANGE_RATES if exchange_rates is None else exchange_rates
-        if base_currency not in rates:
-            raise ApiRequestError(f"нет курса для {base_currency}→USD")
-        base_rate = number(rates[base_currency])
+        if base not in rates:
+            raise ApiRequestError(f"нет курса для {base}→USD")
+        base_rate = number(rates[base])
         total = 0.0
         for code, wallet in self._wallets.items():
             if wallet.balance == 0:
                 continue
             if code not in rates:
-                raise ApiRequestError(f"нет курса для {code}→{base_currency}")
+                raise ApiRequestError(f"нет курса для {code}→{base}")
             total += wallet.balance * number(rates[code]) / base_rate
         return number(total, positive=False)
 
